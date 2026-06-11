@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# Wraithe — WiFi Penetration Testing Toolkit
+# Entry point script
+#
+
+set -e
+
+# ── Colors ──
+R='\033[91m'
+G='\033[92m'
+Y='\033[93m'
+C='\033[96m'
+B='\033[1m'
+D='\033[2m'
+N='\033[0m'
+
+WRAITHE_DIR="/opt/wraithe"
+
+# ── Root check ──
+if [[ $EUID -ne 0 ]]; then
+    echo -e "${R}[!] Wraithe must run as root${N}"
+    echo -e "${D}   sudo wraithe${N}"
+    exit 1
+fi
+
+# ── Check dependencies ──
+DEPS=("python3" "reaver" "bully" "pixiewps" "aircrack-ng" "iw" "iwconfig" "airmon-ng")
+MISSING=()
+
+for dep in "${DEPS[@]}"; do
+    if ! command -v "$dep" &>/dev/null; then
+        MISSING+=("$dep")
+    fi
+done
+
+if [[ ${#MISSING[@]} -gt 0 ]]; then
+    echo -e "${Y}[!] Missing dependencies: ${MISSING[*]}${N}"
+    echo -e "${D}   Install with: sudo apt install -y ${MISSING[*]}${N}"
+    echo
+    read -p "Continue anyway? [Y/n]: " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ -n $REPLY ]]; then
+        exit 1
+    fi
+fi
+
+# ── Check OneShot ──
+if [[ ! -f /opt/OneShot/oneshot.py ]]; then
+    echo -e "${Y}[!] OneShot not found at /opt/OneShot/oneshot.py${N}"
+    echo -e "${D}   Install: git clone https://github.com/kimocoder/OneShot /opt/OneShot${N}"
+    echo
+fi
+
+# ── Kill interfering processes (optional) ──
+echo -e "${D}[*] Preparing environment...${N}"
+
+# ── Log directory ──
+mkdir -p /tmp/wraithe_logs
+
+# ── Launch Python app ──
+cd "$WRAITHE_DIR" || { echo -e "${R}[!] Failed to cd to $WRAITHE_DIR${N}"; exit 1; }
+exec python3 wraithe.py "$@"
